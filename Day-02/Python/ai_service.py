@@ -85,6 +85,12 @@ def call_groq_json(system_prompt: str, user_prompt: str, required_keys: list, te
             if not isinstance(parsed.get("confidence"), (int, float)):
                 parsed["confidence"] = 0.5
 
+            # Hybrid adjustment: don't rely purely on the model's self-report.
+            # Each retry needed to get a valid response knocks confidence down,
+            # since a response that failed validation once is less trustworthy.
+            retry_penalty = 0.15 * (attempt - 1)
+            parsed["confidence"] = max(0.0, round(parsed["confidence"] - retry_penalty, 3))
+
             parsed["needs_human_review"] = parsed["confidence"] < CONFIDENCE_THRESHOLD
             parsed["_meta"] = {"attempts": attempt}
 
@@ -106,11 +112,19 @@ def call_groq_json(system_prompt: str, user_prompt: str, required_keys: list, te
 def qualify_lead(lead_info: str) -> dict:
     system = """You are a B2B sales assistant. Given raw lead info, score the lead
 from 1-10 on purchase likelihood and give a one-sentence reason.
+
+Be strict and honest about your confidence score - do not default to a high number.
+Use these guidelines:
+- 0.9-1.0: completely clear and unambiguous, no reasonable alternative interpretation
+- 0.6-0.89: mostly clear, but some wording could support a different interpretation
+- 0.3-0.59: genuinely ambiguous, could reasonably go more than one way
+- 0.0-0.29: not enough information to answer confidently at all
+
 Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this shape:
 {
   "score": <integer 1-10>,
   "reason": "<one sentence>",
-  "confidence": <number 0-1, how confident you are in this score>
+  "confidence": <number 0-1, be strict per the guidelines above>
 }"""
     return call_groq_json(system, lead_info, ["score", "reason", "confidence"])
 
@@ -120,11 +134,19 @@ def classify_ticket(ticket_text: str) -> dict:
     system = """You are a support ticket classifier. Classify the ticket into
 exactly one category: Billing, Technical, Account, or General.
 Also assign urgency: Low, Medium, or High.
+
+Be strict and honest about your confidence score - do not default to a high number.
+Use these guidelines:
+- 0.9-1.0: completely clear and unambiguous, no reasonable alternative interpretation
+- 0.6-0.89: mostly clear, but some wording could support a different interpretation
+- 0.3-0.59: genuinely ambiguous, could reasonably go more than one way
+- 0.0-0.29: not enough information to answer confidently at all
+
 Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this shape:
 {
   "category": "<Billing|Technical|Account|General>",
   "urgency": "<Low|Medium|High>",
-  "confidence": <number 0-1, how confident you are in this classification>
+  "confidence": <number 0-1, be strict per the guidelines above>
 }"""
     return call_groq_json(system, ticket_text, ["category", "urgency", "confidence"])
 
@@ -133,11 +155,19 @@ Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this
 def draft_email(recipient: str, purpose: str, tone: str = "professional") -> dict:
     system = f"""You are an email drafting assistant. Write a {tone} email under
 120 words.
+
+Be strict and honest about your confidence score - do not default to a high number.
+Use these guidelines:
+- 0.9-1.0: purpose and recipient were completely clear, no guessing needed
+- 0.6-0.89: mostly clear, but you had to make small assumptions
+- 0.3-0.59: vague input, you had to invent significant context
+- 0.0-0.29: not enough information to write a meaningful, on-target email
+
 Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this shape:
 {{
   "subject": "<subject line>",
   "body": "<email body, under 120 words>",
-  "confidence": <number 0-1, how confident you are this email fits the purpose well>
+  "confidence": <number 0-1, be strict per the guidelines above>
 }}"""
     user = f"Recipient: {recipient}\nPurpose: {purpose}"
     return call_groq_json(system, user, ["subject", "body", "confidence"], temperature=0.6)
@@ -146,13 +176,21 @@ Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this
 # 4. Data extractor from raw text
 def extract_data(raw_text: str) -> dict:
     system = """Extract structured data from the text.
+
+Be strict and honest about your confidence score - do not default to a high number.
+Use these guidelines:
+- 0.9-1.0: all fields are explicitly and unambiguously present in the text
+- 0.6-0.89: most fields present, but one or two required light inference
+- 0.3-0.59: several fields missing or the text is ambiguous about who/what they refer to
+- 0.0-0.29: almost nothing usable could be extracted from the text
+
 Respond ONLY with valid JSON (no markdown, no explanation) matching exactly this shape:
 {
   "name": <string or null>,
   "email": <string or null>,
   "phone": <string or null>,
   "company": <string or null>,
-  "confidence": <number 0-1, how confident you are in the extracted fields>
+  "confidence": <number 0-1, be strict per the guidelines above>
 }
 Use null for any field not found in the text."""
     return call_groq_json(
