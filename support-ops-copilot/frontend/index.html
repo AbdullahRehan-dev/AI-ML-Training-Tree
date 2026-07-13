@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support Ops Copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ LEFT RAIL: brand + live pipeline ============ -->
+  <aside class="rail">
+    <div class="rail__brand">
+      <span class="rail__mark">◎</span>
+      <div>
+
+        <div class="rail__title">Support Ops</div>
+        <div class="rail__subtitle">Copilot</div>
+      </div>
+    </div>
+
+    <nav class="rail__pipeline" id="pipelineRail" aria-label="Ticket pipeline progress">
+      <div class="pipe-step" data-stage="intake">
+        <div class="pipe-step__dot"></div>
+        <div class="pipe-step__body">
+          <div class="pipe-step__label">Intake</div>
+          <div class="pipe-step__meta">Raw ticket received</div>
+        </div>
+      </div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step" data-stage="classify">
+        <div class="pipe-step__dot"></div>
+        <div class="pipe-step__body">
+          <div class="pipe-step__label">Classify</div>
+          <div class="pipe-step__meta">Category · urgency · confidence</div>
+        </div>
+      </div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step" data-stage="knowledge">
+        <div class="pipe-step__dot"></div>
+        <div class="pipe-step__body">
+          <div class="pipe-step__label">Knowledge</div>
+          <div class="pipe-step__meta">RAG retrieval + citation</div>
+        </div>
+      </div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step" data-stage="act">
+        <div class="pipe-step__dot"></div>
+        <div class="pipe-step__body">
+          <div class="pipe-step__label">Act</div>
+          <div class="pipe-step__meta">Draft reply or agent tools</div>
+        </div>
+      </div>
+      <div class="pipe-line"></div>
+      <div class="pipe-step" data-stage="review">
+        <div class="pipe-step__dot"></div>
+        <div class="pipe-step__body">
+          <div class="pipe-step__label">Review</div>
+          <div class="pipe-step__meta">Human gate on low confidence</div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="rail__status">
+      <div class="rail__status-row">
+        <span class="dot dot--idle" id="apiStatusDot"></span>
+        <span id="apiStatusText">Checking backend…</span>
+      </div>
+      <div class="rail__status-row rail__status-row--dim">
+        <span id="modelName" style="color: black;">grok</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <header class="topbar">
+      <div class="tabs" role="tablist" aria-label="Views">
+        <button class="tab is-active" data-view="pipeline" role="tab" aria-selected="true">Pipeline</button>
+        <button class="tab" data-view="agent" role="tab" aria-selected="false">Agent &amp; Tools</button>
+        <button class="tab" data-view="knowledge" role="tab" aria-selected="false">Knowledge Base</button>
+        <button class="tab" data-view="logs" role="tab" aria-selected="false">Tool Call Log</button>
+      </div>
+      <div class="topbar__right">
+        <label class="config-item">
+          Backend URL
+          <input id="backendUrl" type="text" value="http://localhost:8000" spellcheck="false" />
+        </label>
+      </div>
+    </header>
+
+    <!-- ---------- VIEW: PIPELINE (Stage 5) ---------- -->
+    <section class="view is-active" id="view-pipeline">
+      <div class="panel panel--input">
+        <div class="panel__header">
+          <h2>Submit a ticket</h2>
+          <select id="sampleTickets" class="select">
+            <option value="">— Load a sample ticket —</option>
+          </select>
+        </div>
+        <textarea id="ticketInput" class="ticket-input" placeholder="Paste or type a raw customer ticket…" rows="4"></textarea>
+        <div class="panel__actions">
+          <button class="btn btn--primary" id="processBtn">
+            <span>Process ticket</span>
+          </button>
+          <span class="hint">Runs classify → extract → knowledge/draft → review gate end to end</span>
+        </div>
+      </div>
+
+      <div class="results" id="pipelineResults">
+        <div class="empty-state">
+          <div class="empty-state__glyph">⟡</div>
+          <p>Results will appear here once a ticket is processed.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: AGENT (Stage 4) ---------- -->
+    <section class="view" id="view-agent">
+      <div class="panel panel--input">
+        <div class="panel__header">
+          <h2>Give the agent a ticket that needs action</h2>
+          <select id="agentSampleTickets" class="select">
+            <option value="">— Load a sample ticket —</option>
+          </select>
+        </div>
+        <textarea id="agentTicketInput" class="ticket-input" placeholder="e.g. a refund request with an order ID…" rows="4"></textarea>
+        <div class="panel__actions">
+          <button class="btn btn--primary" id="agentRunBtn">
+            <span>Run agent</span>
+          </button>
+          <span class="hint">Tools: lookup_order_status · issue_refund (needs approval) · escalate_to_human</span>
+        </div>
+      </div>
+
+      <div class="results" id="agentResults">
+        <div class="empty-state">
+          <div class="empty-state__glyph">⚙</div>
+          <p>Agent runs, tool calls, and approval prompts will appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: KNOWLEDGE BASE (Stage 3) ---------- -->
+    <section class="view" id="view-knowledge">
+      <div class="panel panel--input">
+        <div class="panel__header">
+          <h2>Ask the knowledge base directly</h2>
+        </div>
+        <textarea id="kbInput" class="ticket-input" placeholder="e.g. Do I have to pay a return shipping fee?" rows="3"></textarea>
+        <div class="panel__actions">
+          <button class="btn btn--primary" id="kbQueryBtn">
+            <span>Ask</span>
+          </button>
+          <span class="hint">Answers are grounded only in retrieved chunks — no citation, no claim.</span>
+        </div>
+      </div>
+
+      <div class="results" id="kbResults">
+        <div class="empty-state">
+          <div class="empty-state__glyph">▤</div>
+          <p>Grounded answers with source citations will appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: LOGS (Stage 4 visibility) ---------- -->
+    <section class="view" id="view-logs">
+      <div class="panel panel--input panel--row">
+        <h2>Tool call log</h2>
+        <button class="btn btn--ghost" id="refreshLogsBtn">Refresh</button>
+      </div>
+      <div class="log-console" id="logConsole">
+        <div class="empty-state">
+          <div class="empty-state__glyph">▥</div>
+          <p>No tool calls yet. Run the agent to populate this log.</p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ============ APPROVAL MODAL ============ -->
+<div class="modal-backdrop" id="approvalModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
+    <div class="modal__badge">Human approval required</div>
+    <h3 id="approvalTitle">Destructive action pending</h3>
+    <div class="modal__body" id="approvalBody"></div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" id="rejectBtn">Reject</button>
+      <button class="btn btn--primary" id="approveBtn">Approve &amp; execute</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
