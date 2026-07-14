@@ -70,4 +70,6 @@ class PipelineResult(BaseModel):
     draft: Optional[DraftReply] = None
     needs_agent_action: bool
     review: ReviewFlag
+    agent_status: Optional[str] = None
+    pending_approval: Optional[dict] = None
     session_id: Optional[str] = None

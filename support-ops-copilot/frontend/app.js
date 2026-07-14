@@ -260,13 +260,41 @@ function renderPipelineResult(container, r) {
         <span>🔧</span>
         <span>This ticket looks like it needs an action (refund/order lookup). Switch to <b>Agent &amp; Tools</b> to run it with a human approval gate.</span>
       </div>`;
+    if (r.session_id) {
+      html += `
+        <div class="card">
+          <div class="card__title">Agent session</div>
+          <div class="field-grid">
+            <div class="field">
+              <span class="field__label">Session ID</span>
+              <span class="field__value">${escapeHtml(r.session_id)}</span>
+            </div>
+            <div class="field">
+              <span class="field__label">Agent status</span>
+              <span class="field__value">${escapeHtml(r.agent_status || 'pending')}</span>
+            </div>
+          </div>
+          <button class="btn btn--secondary" type="button" onclick="openAgentSessionFromPipeline('${escapeHtml(r.session_id)}')">Open Agent tab</button>
+        </div>`;
+    }
   }
 
   // Review banner
+  let reviewText = `${escapeHtml(r.review.reason)}`;
+  if (!r.review.flagged && r.needs_agent_action) {
+    if (r.agent_status === 'pending_approval') {
+      reviewText = '<b>Content auto-approved.</b> Agent action is paused for human approval. ' + reviewText;
+    } else {
+      reviewText = '<b>Content auto-approved.</b>' + (r.agent_status ? ` Agent action status: ${escapeHtml(r.agent_status)}.` : '') + ' ' + reviewText;
+    }
+  } else if (!r.review.flagged) {
+    reviewText = '<b>Auto-approved.</b> ' + reviewText;
+  }
+
   html += `
     <div class="review-banner ${r.review.flagged ? 'review-banner--flagged' : 'review-banner--ok'}">
       <span class="review-banner__icon">${r.review.flagged ? '⚑' : '✓'}</span>
-      <span class="review-banner__text">${r.review.flagged ? '<b>Flagged for human review.</b>' : '<b>Auto-approved.</b>'} ${escapeHtml(r.review.reason)}</span>
+      <span class="review-banner__text">${reviewText}</span>
     </div>`;
 
   container.innerHTML = html;
@@ -275,6 +303,33 @@ function renderPipelineResult(container, r) {
 // ===================================================================
 // STAGE 4 - Agent view
 // ===================================================================
+function switchToView(view) {
+  const tab = document.querySelector(`.tab[data-view="${view}"]`);
+  if (tab) tab.click();
+}
+
+async function loadAgentSession(sessionId) {
+  const resultsEl = document.getElementById('agentResults');
+  setLoading(resultsEl, 'Loading agent session…');
+  try {
+    const session = await getJSON(`/api/agent/session/${encodeURIComponent(sessionId)}`);
+    renderAgentSession(resultsEl, session);
+    if (session.status === 'pending_approval') {
+      state.pendingAgentSession = session.session_id;
+      openApprovalModal(session.pending_approval);
+    } else {
+      state.pendingAgentSession = null;
+    }
+  } catch (e) {
+    renderError(resultsEl, e.message);
+  }
+}
+
+function openAgentSessionFromPipeline(sessionId) {
+  switchToView('agent');
+  loadAgentSession(sessionId);
+}
+
 document.getElementById('agentRunBtn').addEventListener('click', async () => {
   const ticketText = document.getElementById('agentTicketInput').value.trim();
   const resultsEl = document.getElementById('agentResults');
