@@ -280,10 +280,21 @@ function renderPipelineResult(container, r) {
   }
 
   // Review banner
+  let reviewText = `${escapeHtml(r.review.reason)}`;
+  if (!r.review.flagged && r.needs_agent_action) {
+    if (r.agent_status === 'pending_approval') {
+      reviewText = '<b>Content auto-approved.</b> Agent action is paused for human approval. ' + reviewText;
+    } else {
+      reviewText = '<b>Content auto-approved.</b>' + (r.agent_status ? ` Agent action status: ${escapeHtml(r.agent_status)}.` : '') + ' ' + reviewText;
+    }
+  } else if (!r.review.flagged) {
+    reviewText = '<b>Auto-approved.</b> ' + reviewText;
+  }
+
   html += `
     <div class="review-banner ${r.review.flagged ? 'review-banner--flagged' : 'review-banner--ok'}">
       <span class="review-banner__icon">${r.review.flagged ? '⚑' : '✓'}</span>
-      <span class="review-banner__text">${r.review.flagged ? '<b>Flagged for human review.</b>' : '<b>Auto-approved.</b>'} ${escapeHtml(r.review.reason)}</span>
+      <span class="review-banner__text">${reviewText}</span>
     </div>`;
 
   container.innerHTML = html;
