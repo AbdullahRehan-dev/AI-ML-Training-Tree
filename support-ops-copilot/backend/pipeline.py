@@ -12,6 +12,7 @@ One function that ties every earlier stage together the way the frontend's
 from __future__ import annotations
 
 from backend.ai_service import classify_ticket, extract_ticket_data, draft_reply, StructuredGenerationError
+from backend.agent import agent as agent_module
 from backend.knowledge_base.retriever import answer_from_knowledge_base
 from backend.reliability import build_review_flag
 from backend.schemas import PipelineResult, Classification, ExtractedData, DraftReply, ReviewFlag
@@ -54,6 +55,18 @@ def process_ticket(ticket_text: str) -> PipelineResult:
 
     needs_agent_action = _needs_agent_action(classification, ticket_text)
 
+    session_id = None
+    agent_status = None
+    pending_approval = None
+    if needs_agent_action:
+        try:
+            session = agent_module.run_agent(ticket_text)
+        except Exception as e:
+            raise RuntimeError(f"Agent failed during pipeline: {e}") from e
+        session_id = session["session_id"]
+        agent_status = session["status"]
+        pending_approval = session.get("pending_approval")
+
     confidences = [classification.confidence, extracted.confidence]
     confidences.append(rag_answer.confidence if rag_answer else draft.confidence)
     overall_confidence = min(confidences)
@@ -76,4 +89,7 @@ def process_ticket(ticket_text: str) -> PipelineResult:
         draft=draft,
         needs_agent_action=needs_agent_action,
         review=review,
+        agent_status=agent_status,
+        pending_approval=pending_approval,
+        session_id=session_id,
     )

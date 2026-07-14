@@ -260,6 +260,23 @@ function renderPipelineResult(container, r) {
         <span>🔧</span>
         <span>This ticket looks like it needs an action (refund/order lookup). Switch to <b>Agent &amp; Tools</b> to run it with a human approval gate.</span>
       </div>`;
+    if (r.session_id) {
+      html += `
+        <div class="card">
+          <div class="card__title">Agent session</div>
+          <div class="field-grid">
+            <div class="field">
+              <span class="field__label">Session ID</span>
+              <span class="field__value">${escapeHtml(r.session_id)}</span>
+            </div>
+            <div class="field">
+              <span class="field__label">Agent status</span>
+              <span class="field__value">${escapeHtml(r.agent_status || 'pending')}</span>
+            </div>
+          </div>
+          <button class="btn btn--secondary" type="button" onclick="openAgentSessionFromPipeline('${escapeHtml(r.session_id)}')">Open Agent tab</button>
+        </div>`;
+    }
   }
 
   // Review banner
@@ -275,6 +292,33 @@ function renderPipelineResult(container, r) {
 // ===================================================================
 // STAGE 4 - Agent view
 // ===================================================================
+function switchToView(view) {
+  const tab = document.querySelector(`.tab[data-view="${view}"]`);
+  if (tab) tab.click();
+}
+
+async function loadAgentSession(sessionId) {
+  const resultsEl = document.getElementById('agentResults');
+  setLoading(resultsEl, 'Loading agent session…');
+  try {
+    const session = await getJSON(`/api/agent/session/${encodeURIComponent(sessionId)}`);
+    renderAgentSession(resultsEl, session);
+    if (session.status === 'pending_approval') {
+      state.pendingAgentSession = session.session_id;
+      openApprovalModal(session.pending_approval);
+    } else {
+      state.pendingAgentSession = null;
+    }
+  } catch (e) {
+    renderError(resultsEl, e.message);
+  }
+}
+
+function openAgentSessionFromPipeline(sessionId) {
+  switchToView('agent');
+  loadAgentSession(sessionId);
+}
+
 document.getElementById('agentRunBtn').addEventListener('click', async () => {
   const ticketText = document.getElementById('agentTicketInput').value.trim();
   const resultsEl = document.getElementById('agentResults');

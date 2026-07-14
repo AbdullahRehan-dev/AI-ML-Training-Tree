@@ -100,7 +100,9 @@ The frontend has a "Backend URL" field in the top bar (defaults to
 - **Stage 2/3/4/5 (frontend):** run the backend + open the frontend, then
   use the four tabs:
   - **Pipeline** - paste/pick a ticket, hit "Process ticket", watch the left
-    rail light up through Classify → Knowledge → Act → Review.
+    rail light up through Classify → Knowledge → Act → Review. If the ticket
+    needs a refund/order action, the pipeline now starts an agent session and
+    exposes the session ID for review.
   - **Agent & Tools** - give it a refund-shaped ticket (try the "Refund
     request within policy" sample), watch it call `lookup_order_status`,
     then pause with an approval modal before `issue_refund` executes.
@@ -128,6 +130,8 @@ The frontend has a "Backend URL" field in the top bar (defaults to
 - **Model:** defaults to `openai/gpt-oss-20b` for Groq Cloud OpenAI compatibility. Change
   `GROK_MODEL` in `.env` if you want a cheaper/faster variant - check your
   Groq Cloud console for what's current, since model slugs and access vary by key.
+- **GROQ_API_KEY is required:** the backend now fails loudly if `GROQ_API_KEY`
+  is missing, so set it in `.env` before starting the app.
 - **Embeddings are local, not Groq:** Groq doesn't expose an embeddings
   endpoint, so Stage 3 uses `sentence-transformers` (`all-MiniLM-L6-v2`)
   running on your machine, with ChromaDB for storage. Groq is only used for
