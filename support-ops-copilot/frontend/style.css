@@ -288,7 +288,7 @@ body {
   font-family: var(--font-body);
   max-width: 280px;
  
-  background-color: #88caeb;
+  background: radial-gradient(circle at center, #8ecbff 0%, #8ecbff 40%, #3a5f9f 100%);;
   color: #1c3a70;
   border: 1px solid #8ecbff;
   border-radius: 6px;
