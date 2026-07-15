@@ -42,8 +42,19 @@
 html, body { height: 100%; }
 
 body {
+  min-height: 100vh;
   margin: 0;
-  background: var(--bg);
+  background-color: #05070d;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.25), transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(56, 189, 248, 0.15), transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(37, 99, 235, 0.18), transparent 50%),
+    linear-gradient(180deg, #050810 0%, #05070d 60%, #030509 100%);
+  background-attachment: fixed;
+
+
+  margin: 0;
+  /* background: var(--bg); */
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14.5px;
@@ -68,7 +79,7 @@ body {
 
 /* ---------- Left rail ---------- */
 .rail {
-  background: radial-gradient(circle at center, #6ea3d6 0%, #6a97c8 45%, #3a5f9f 100%);
+  background: radial-gradient(circle at center, #6ea3d6 0%, #a7b7c9 45%, #3a5f9f 100%);
   border-right: 1px solid var(--border-soft);
   padding: 22px 18px;
   display: flex;
@@ -83,6 +94,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-weight: bolder;
 }
 .rail__mark {
   font-size: 22px;
@@ -254,10 +266,20 @@ body {
 .view.is-active { display: block; }
 
 .panel {
-  background: var(--surface);
+  background: linear-gradient(145deg, rgba(15, 20, 32, 0.85), rgba(8, 11, 20, 0.9));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(37, 99, 235, 0.08);
+  backdrop-filter: blur(12px);
+
+  /* background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  padding: 20px 22px; */
   margin-bottom: 22px;
 }
 .panel--row { display: flex; align-items: center; justify-content: space-between; }
@@ -350,18 +372,22 @@ body {
   text-align: center;
   color: var(--text-faint);
   padding: 60px 20px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(59, 130, 246, 0.20);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 20, 32, 0.85), rgba(8, 11, 20, 0.9));
 }
 .empty-state__glyph { font-size: 26px; margin-bottom: 8px; color: var(--text-faint); }
 .empty-state p { margin: 0; font-size: 13px; }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(15, 20, 32, 0.85), rgba(8, 11, 20, 0.9));
+  border: 1px solid rgba(59, 130, 246, 0.20);
+  border-radius: 16px;
   padding: 18px 20px;
   animation: rise 0.25s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 8px 24px rgba(0, 0, 0, 0.32);
 }
 @keyframes rise { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
 
@@ -485,9 +511,10 @@ body {
   display: flex;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-soft);
-  background: var(--bg);
+  border-radius: 16px;
+  border: 1px solid rgba(59, 130, 246, 0.20);
+  background: linear-gradient(145deg, rgba(15, 20, 32, 0.85), rgba(8, 11, 20, 0.9));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
   font-size: 12.5px;
 }
 .thread-item__icon { font-family: var(--font-mono); flex-shrink: 0; width: 20px; text-align: center; }
@@ -511,9 +538,9 @@ body {
 
 /* ---------- Log console ---------- */
 .log-console {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(15, 20, 32, 0.85), rgba(8, 11, 20, 0.9));
+  border: 1px solid rgba(59, 130, 246, 0.20);
+  border-radius: 16px;
   padding: 10px;
   display: flex;
   flex-direction: column;
