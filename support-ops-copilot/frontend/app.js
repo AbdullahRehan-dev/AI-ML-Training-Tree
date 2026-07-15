@@ -8,7 +8,7 @@ const state = {
 };
 
 // ---------------------------------------------------------------------
-// Sample tickets
+// Sample tickets and knowledge questions
 // ---------------------------------------------------------------------
 const SAMPLE_TICKETS = [
   { label: "Straightforward shipping question", text: "Hi, I placed an order 4 days ago and haven't gotten a tracking email yet. How long does shipping usually take?" },
@@ -21,8 +21,16 @@ const SAMPLE_TICKETS = [
   { label: "Password reset", text: "hey can u tell me how to reset my password, the email never came" },
 ];
 
-function populateSampleDropdown(selectEl, textareaEl) {
-  SAMPLE_TICKETS.forEach((t, i) => {
+const SAMPLE_KB_QUESTIONS = [
+  { label: "Return shipping fee policy", text: "If I return something I bought 3 weeks ago, will I have to pay a return shipping fee?" },
+  { label: "Refund eligibility for defective item", text: "What is our refund policy if a customer receives a defective product?" },
+  { label: "Order status and delivery window", text: "How long does shipping usually take once an order has shipped?" },
+  { label: "Late refund request", text: "Can customers still get a refund after 30 days if they have a valid reason?" },
+  { label: "Warranty coverage question", text: "Does our policy cover warranty replacements for damaged items after delivery?" },
+];
+
+function populateSampleDropdown(selectEl, textareaEl, items) {
+  items.forEach((t, i) => {
     const opt = document.createElement('option');
     opt.value = i;
     opt.textContent = t.label;
@@ -30,11 +38,12 @@ function populateSampleDropdown(selectEl, textareaEl) {
   });
   selectEl.addEventListener('change', () => {
     if (selectEl.value === '') return;
-    textareaEl.value = SAMPLE_TICKETS[+selectEl.value].text;
+    textareaEl.value = items[+selectEl.value].text;
   });
 }
-populateSampleDropdown(document.getElementById('sampleTickets'), document.getElementById('ticketInput'));
-populateSampleDropdown(document.getElementById('agentSampleTickets'), document.getElementById('agentTicketInput'));
+populateSampleDropdown(document.getElementById('sampleTickets'), document.getElementById('ticketInput'), SAMPLE_TICKETS);
+populateSampleDropdown(document.getElementById('agentSampleTickets'), document.getElementById('agentTicketInput'), SAMPLE_TICKETS);
+populateSampleDropdown(document.getElementById('kbSampleQuestions'), document.getElementById('kbInput'), SAMPLE_KB_QUESTIONS);
 
 // ---------------------------------------------------------------------
 // Tabs

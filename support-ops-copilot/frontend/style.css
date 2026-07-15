@@ -94,7 +94,14 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: bolder;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
 }
 .rail__mark {
   font-size: 22px;
