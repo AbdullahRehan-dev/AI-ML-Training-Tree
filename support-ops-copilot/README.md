@@ -1,59 +1,89 @@
 # Support Ops Copilot
 
-An AI-powered support assistant built in five stages on top of Grok
-(xAI). Classifies tickets, answers from a real knowledge base with
-citations, calls tools with a human-in-the-loop approval gate, and ships
-with a working frontend that shows all of it happening live.
+A demo support-assistant app built around Groq Cloud and local retrieval.
+It classifies support tickets, extracts structured issue data, answers policy/
+FAQ questions with citations, and runs agent-enabled refund/order actions
+behind a human approval gate.
 
-```
-Stage 1  Core AI service (classify / draft / extract)
-Stage 2  Validated JSON + retry + confidence scoring
-Stage 3  RAG over a local knowledge base (ChromaDB)
-Stage 4  Tool-calling agent with a human approval gate
-Stage 5  One coherent app: pipeline + frontend + logs
-```
+## What this project actually does
 
-## Project layout
+- Stage 1: classify ticket intent and urgency, extract order/customer fields,
+  and draft a support reply.
+- Stage 2: validate all model responses as structured JSON, retry if the
+  output is invalid, and gate risky outputs with confidence scoring.
+- Stage 3: retrieve grounded answers from a local ChromaDB knowledge base.
+- Stage 4: run a tool-calling agent for refund/order requests with an
+  approval pause before destructive actions.
+- Stage 5: expose a single pipeline endpoint plus a static frontend that
+  shows the entire ticket flow.
+
+## Repository layout
 
 ```
 support-ops-copilot/
 ├── backend/
-│   ├── main.py                 FastAPI app - all HTTP endpoints
-│   ├── config.py               env-driven settings
-│   ├── grok_client.py          OpenAI-compatible client pointed at Groq Cloud
-│   ├── schemas.py               Pydantic models (Stage 2 validated JSON)
-│   ├── stage1_demo.py           Stage 1: raw, unhardened, run in terminal
-│   ├── ai_service.py            Stage 1 functions, hardened per Stage 2
-│   ├── reliability.py           retry-on-invalid-JSON + confidence gate
-│   ├── pipeline.py              Stage 5: end-to-end ticket router
+│   ├── main.py                 FastAPI app and HTTP endpoints
+│   ├── config.py               environment-driven project settings
+│   ├── grok_client.py          OpenAI-compatible Groq client wrapper
+│   ├── schemas.py              Pydantic models for all structured outputs
+│   ├── stage1_demo.py          terminal-only Stage 1 demo runner
+│   ├── ai_service.py           classification, extraction, reply drafting
+│   ├── reliability.py          JSON validation, retry logic, confidence gate
+│   ├── pipeline.py             end-to-end ticket router
 │   ├── knowledge_base/
-│   │   ├── docs/                synthetic FAQ / policy / past tickets
-│   │   ├── ingest.py            Stage 3: chunk + embed + store (ChromaDB)
-│   │   └── retriever.py         Stage 3: retrieve + grounded, cited answer
+│   │   ├── docs/               FAQ, policy, and past-ticket source docs
+│   │   ├── ingest.py           chunk + embed + store the local vector index
+   │   └── retriever.py         retrieval + grounded answer generation
 │   ├── agent/
-│   │   ├── tools.py              Stage 4: mock tools + fake order DB
-│   │   └── agent.py              Stage 4: tool-calling loop + approval gate
-│   └── logs/tool_call_log.jsonl  every tool call, input + output (generated)
+│   │   ├── tools.py            mock order/refund tools and policy guardrails
+│   │   └── agent.py            tool-calling loop with approval gating
+│   └── logs/tool_call_log.jsonl recorded tool call events
 ├── frontend/
-│   ├── index.html / style.css / app.js   plain HTML/CSS/JS, no build step
-├── scripts/setup.sh              venv + install + build the RAG index
-├── sample_tickets.json           tickets to try in the UI
-├── BREAKING_IT.md                Stage 1 deliverable: documented failures
-├── ARCHITECTURE.md               one-page architecture diagram (Mermaid)
-└── requirements.txt
+│   ├── index.html              static web UI
+│   ├── style.css               UI styling
+│   └── app.js                  frontend behavior and API integration
+├── scripts/setup.sh            creates venv, installs deps, builds RAG index
+├── requirements.txt            Python dependencies
+├── sample_tickets.json         example tickets for manual testing
+├── BREAKING_IT.md              prompt injection / failure case notes
+└── ARCHITECTURE.md             architecture and component diagram
 ```
+
+## Requirements
+
+- Python 3.12 (or a compatible Python 3.x install)
+- A Groq Cloud API key
+- `python-dotenv` support is required to load `.env`
 
 ## Setup
 
-Requires **Python 3.12** and a Groq Cloud API key from https://console.groq.com.
+From the project root:
 
 ```bash
-git clone <your-repo-url> support-ops-copilot
-cd support-ops-copilot
-bash scripts/setup.sh          # creates venv/, installs deps, builds the RAG index
+bash scripts/setup.sh
 ```
 
-`.env.example` copies `.env.example` to `.env` for you - open it and set:
+This does the following:
+
+1. creates and activates `venv/`
+2. installs dependencies from `requirements.txt`
+3. copies `.env.example` to `.env` if needed
+4. builds the local ChromaDB knowledge base index
+
+Then edit `.env` and add your `GROQ_API_KEY`.
+
+If you prefer manual setup:
+
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# edit .env and add GROQ_API_KEY
+python -m backend.knowledge_base.ingest
+```
+
+### Required `.env` values
 
 ```
 GROQ_API_KEY=gsk-...your key...
@@ -61,121 +91,114 @@ GROK_MODEL=openai/gpt-oss-20b
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 ```
 
-If you'd rather do it by hand:
+Optional overrides:
 
-```bash
-python3.12 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env            # then edit in your GROQ_API_KEY
-python -m backend.knowledge_base.ingest   # builds the local vector index
+```
+CONFIDENCE_THRESHOLD=0.7
+MAX_RETRIES=3
+CHROMA_PERSIST_DIR=./data/chroma_db
 ```
 
-## Running it
+## Running the app
 
-**Backend** (from the project root, venv activated):
+Start the backend from the repository root:
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
-**Frontend** - it's static, no build step. Either:
+**Frontend** - it's static, no build step. You can open `frontend/index.html` directly in a browser, or serve it from the backend at `http://localhost:8000`.
 
-- Open `frontend/index.html` directly in a browser, or
-- Serve it so relative paths behave the same as a real deployment:
-  ```bash
-  cd frontend && python -m http.server 5500
-  # then open http://localhost:5500
-  ```
+If you prefer a separate static host, use:
 
-The frontend has a "Backend URL" field in the top bar (defaults to
-`http://localhost:8000`) - point it at wherever `uvicorn` is running.
+```bash
+cd frontend && python -m http.server 8000
+```
 
-## Trying each stage
+Then open `http://localhost:8000` and make sure the Backend URL in the UI matches `http://localhost:8000`.
 
-- **Stage 1 (terminal, raw):** `python -m backend.stage1_demo` - runs the
-  unhardened classify/draft/extract functions against sample tickets
-  designed to break them (ambiguous input, prompt injection, hallucination
-  bait). See `BREAKING_IT.md` for the write-up.
-- **Stage 2/3/4/5 (frontend):** run the backend + open the frontend, then
-  use the four tabs:
-  - **Pipeline** - paste/pick a ticket, hit "Process ticket", watch the left
-    rail light up through Classify → Knowledge → Act → Review. If the ticket
-    needs a refund/order action, the pipeline now starts an agent session and
-    exposes the session ID for review.
-  - **Agent & Tools** - give it a refund-shaped ticket (try the "Refund
-    request within policy" sample), watch it call `lookup_order_status`,
-    then pause with an approval modal before `issue_refund` executes.
-  - **Knowledge Base** - ask something only the FAQ/policy docs would know
-    (e.g. "do I pay a return shipping fee?") and see the cited chunks.
-  - **Tool Call Log** - every tool call ever made, with input/output/status.
+## What to try in the UI
+
+- **Pipeline**: process a ticket end-to-end. The UI shows classification,
+  knowledge retrieval/drafting, agent action detection, and review state.
+- **Agent & Tools**: run a refund/order ticket through the agent and
+  approve or reject destructive tool calls.
+- **Knowledge Base**: ask a policy/FAQ question and see citations from the
+  local knowledge docs.
+- **Tool Call Log**: inspect every recorded tool call, including input,
+  output, and approval status.
+
+## Key behavior
+
+- `backend.pipeline.process` performs classify → extract → optional RAG →
+  draft → review gating.
+- Low-confidence outputs are flagged for review by `backend.reliability`.
+- Tickets matching refund/order criteria launch the agent via
+  `backend.agent.agent.run_agent`.
+- The agent pauses for human approval before any destructive tool
+  invocation such as `issue_refund`.
+- Tool call events are appended to `backend/logs/tool_call_log.jsonl`.
 
 ## API reference
 
-| Endpoint | Stage | Purpose |
-|---|---|---|
-| `GET /api/health` | - | liveness check |
-| `POST /api/classify` | 1/2 | `{ticket_text}` → `Classification` |
-| `POST /api/extract` | 1/2 | `{ticket_text}` → `ExtractedData` |
-| `POST /api/draft` | 1/2 | `{ticket_text, category?}` → `DraftReply` |
-| `POST /api/rag/query` | 3 | `{question, top_k?}` → `RAGAnswer` w/ citations |
-| `POST /api/agent/run` | 4 | `{ticket_text}` → session state, may be `pending_approval` |
-| `POST /api/agent/approve` | 4 | `{session_id, approved}` → resumes the agent |
-| `GET /api/agent/session/{id}` | 4 | current state of a session |
-| `GET /api/agent/logs` | 4 | full tool-call log |
-| `POST /api/pipeline/process` | 5 | `{ticket_text}` → full end-to-end `PipelineResult` |
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | Backend liveness check |
+| `POST /api/classify` | Classify ticket text |
+| `POST /api/extract` | Extract structured ticket fields |
+| `POST /api/draft` | Draft a response from ticket text |
+| `POST /api/rag/query` | Query the local RAG knowledge base |
+| `POST /api/agent/run` | Start an agent session for a ticket |
+| `POST /api/agent/approve` | Approve or reject pending agent actions |
+| `GET /api/agent/session/{id}` | Get current agent session state |
+| `GET /api/agent/logs` | Fetch recorded tool-call logs |
+| `POST /api/pipeline/process` | Run the full ticket pipeline end-to-end |
 
-## Design notes worth knowing before you demo this
+## Notes
 
-- **Model:** defaults to `openai/gpt-oss-20b` for Groq Cloud OpenAI compatibility. Change
-  `GROK_MODEL` in `.env` if you want a cheaper/faster variant - check your
-  Groq Cloud console for what's current, since model slugs and access vary by key.
-- **GROQ_API_KEY is required:** the backend now fails loudly if `GROQ_API_KEY`
-  is missing, so set it in `.env` before starting the app.
-- **Embeddings are local, not Groq:** Groq doesn't expose an embeddings
-  endpoint, so Stage 3 uses `sentence-transformers` (`all-MiniLM-L6-v2`)
-  running on your machine, with ChromaDB for storage. Groq is only used for
-  the final grounded-answer generation, not the retrieval step.
-- **Agent sessions are in-memory:** fine for a demo/single-process app;
-  restart the backend and pending sessions/log history from that process
-  reset (the JSONL log file itself persists on disk across restarts).
-- **Refund tool caps:** `issue_refund` mirrors `backend/knowledge_base/docs/policy.md`
-  - it hard-rejects anything over $500 (should be escalated to finance
-    instead) and flags $150-$500 as needing manager approval, on top of the
-    human approval gate that already applies to every refund regardless of
-  amount.
+- The Groq client is used only for classification, extraction, drafting, and
+  grounded response generation. Embeddings are built locally with
+  `sentence-transformers` and stored in ChromaDB.
+- Agent sessions are held in memory, so restarting the backend clears
+  pending sessions and session-specific state.
+- The refund/order tools are mock implementations in
+  `backend/agent/tools.py` and are meant for demo/testing only.
+- The frontend is intentionally simple: no build step, just plain HTML/CSS/JS.
 
-## Git history
+## Known limitations
 
-For the "commit history shows progressive build-up" checklist item, the
-natural way to build this is stage-by-stage commits, e.g.:
+- No authentication or authorization is implemented.
+- In-memory agent sessions do not survive backend restarts.
+- The demo order/refund tools are not integrated with a real backend.
+- The app assumes a local Groq Cloud API key and may need model slug
+  updates based on your account.
+
+## Recommended git history approach
+
+For a clean stage-by-stage commit history, use:
 
 ```bash
 git init
 git add backend/schemas.py backend/grok_client.py backend/config.py \
         backend/stage1_demo.py BREAKING_IT.md requirements.txt .env.example .gitignore
-git commit -m "Stage 1: core AI service + documented failures"
+ git commit -m "Stage 1: core AI service + documented failures"
 
 git add backend/reliability.py backend/ai_service.py
-git commit -m "Stage 2: validated JSON, retry logic, confidence scoring"
+ git commit -m "Stage 2: validated JSON, retry logic, confidence scoring"
 
 git add backend/knowledge_base/
-git commit -m "Stage 3: RAG over local knowledge base with citations"
+ git commit -m "Stage 3: RAG over local knowledge base with citations"
 
 git add backend/agent/
-git commit -m "Stage 4: tool-calling agent with human approval gate"
+ git commit -m "Stage 4: tool-calling agent with human approval gate"
 
 git add backend/pipeline.py backend/main.py frontend/ scripts/ sample_tickets.json ARCHITECTURE.md README.md
-git commit -m "Stage 5: end-to-end pipeline + frontend + architecture diagram"
+ git commit -m "Stage 5: end-to-end pipeline + frontend + architecture diagram"
 ```
 
-## What's next / what I'd change
+## Future improvements
 
-- Swap in-memory agent sessions for Redis (or a DB) so it survives a
-  restart and works across multiple backend workers.
-- Add streaming responses to the frontend so drafts/answers appear
-  token-by-token instead of all at once.
-- Real order/payment system integration in `backend/agent/tools.py` instead
-  of the mock in-memory DB.
-- Auth on the FastAPI app before this ever sees a real customer's data - it
-  is wide open (`allow_origins=["*"]`) by design for local demo purposes.
+- Replace in-memory agent sessions with Redis or a durable DB.
+- Add authentication for backend API and frontend access.
+- Integrate real order/payment systems in `backend/agent/tools.py`.
+- Add streaming output to the frontend for better UX.
