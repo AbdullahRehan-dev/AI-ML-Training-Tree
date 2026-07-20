@@ -93,3 +93,58 @@ def process_ticket(ticket_text: str) -> PipelineResult:
         pending_approval=pending_approval,
         session_id=session_id,
     )
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(
+        description="Run the full Support Ops Copilot pipeline on a ticket text."
+    )
+    parser.add_argument(
+        "ticket_text",
+        nargs="+",
+        help="The ticket text to process through the full pipeline.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the full pipeline result as JSON.",
+    )
+    args = parser.parse_args()
+
+    ticket_text = " ".join(args.ticket_text)
+    result = process_ticket(ticket_text)
+
+    if args.json:
+        print(json.dumps(result.model_dump(), indent=2, default=str))
+        raise SystemExit(0)
+
+    print(f"ticket_text: {result.ticket_text}\n")
+    print(f"category: {result.classification.category}")
+    print(f"urgency: {result.classification.urgency}")
+    print(f"confidence: {result.classification.confidence}\n")
+    print(f"issue_summary: {result.extracted.issue_summary}")
+
+    if result.used_rag and result.rag_answer is not None:
+        print("RAG answer:")
+        print(result.rag_answer.answer)
+        if result.rag_answer.citations:
+            print("citations:")
+            for citation in result.rag_answer.citations:
+                print(f"- {citation}")
+        print("")
+    elif result.draft is not None:
+        print(f"draft: {result.draft.text}\n")
+    else:
+        print("draft: <no draft generated>\n")
+
+    print(f"needs agent action: {result.needs_agent_action}")
+    if result.session_id:
+        print(f"agent session id: {result.session_id}")
+        print(f"agent status: {result.agent_status}")
+        if result.pending_approval is not None:
+            print(f"pending approval: {result.pending_approval}")
+    print(f"review flagged: {result.review.flagged}")
+    print(f"review reason: {result.review.reason}")

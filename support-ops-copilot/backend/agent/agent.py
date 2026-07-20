@@ -277,3 +277,27 @@ def get_session(session_id: str) -> dict:
     if session_id not in _SESSIONS:
         raise KeyError(f"Unknown session '{session_id}'")
     return _public_state(session_id)
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Run the support agent from the terminal.")
+    parser.add_argument("ticket_text", nargs="*", help="The ticket text for the agent.")
+    parser.add_argument("--approve", action="store_true", help="Approve a pending destructive tool call.")
+    parser.add_argument("--reject", action="store_true", help="Reject a pending destructive tool call.")
+    parser.add_argument("--session-id", help="Session ID for approve/reject operations.")
+    args = parser.parse_args()
+
+    if args.approve or args.reject:
+        if not args.session_id:
+            raise SystemExit("--session-id is required when approving or rejecting.")
+        result = approve_pending(args.session_id, approved=args.approve)
+    else:
+        if not args.ticket_text:
+            raise SystemExit("Provide ticket text to run the agent.")
+        ticket_text = " ".join(args.ticket_text)
+        result = run_agent(ticket_text)
+
+    print(json.dumps(result, indent=2, default=str))

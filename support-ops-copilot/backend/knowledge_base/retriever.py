@@ -83,3 +83,17 @@ def answer_from_knowledge_base(question: str, top_k: int = 3) -> RAGAnswer:
         result.confidence = min(result.confidence, 0.3)
 
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Query the knowledge base from the terminal.")
+    parser.add_argument("question", nargs="+", help="The question to ask the knowledge base.")
+    parser.add_argument("--top-k", type=int, default=3, help="Number of top chunks to retrieve.")
+    args = parser.parse_args()
+
+    question = " ".join(args.question)
+    result = answer_from_knowledge_base(question, top_k=args.top_k)
+    print(json.dumps(result.model_dump(), indent=2, default=str))
